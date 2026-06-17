@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { AutenticacionService } from '../../core/services/autenticacion.service';
 
 // Importación de subcomponentes locales
 import { TableroKanbanComponent, PedidoCocina } from './components/tablero-kanban/tablero-kanban.component';
@@ -62,6 +64,17 @@ export class EmpleadoComponent implements OnInit {
   listaNotificaciones: AlertaNotificacion[] = [];
 
   /**
+   * Intención: Constructor por defecto del componente.
+   * Parámetros:
+   *   - router (Router): Servicio de enrutamiento de Angular.
+   *   - autenticacionService (AutenticacionService): Servicio de sesión.
+   */
+  constructor(
+    private router: Router,
+    private autenticacionService: AutenticacionService
+  ) { }
+
+  /**
    * Intención: Inicializar datos base simulados para pedidos, inventario y notificaciones al cargar el componente.
    * Retorno: void.
    */
@@ -93,6 +106,16 @@ export class EmpleadoComponent implements OnInit {
    */
   obtenerCantidadPedidosNuevos(): number {
     return this.listaPedidos.filter(p => p.estado === 'Nuevo').length;
+  }
+
+  /**
+   * Intención: Finalizar la sesión del empleado activo y redirigir al login.
+   * Parámetros: Ninguno.
+   * Retorno: void.
+   */
+  cerrarSesion(): void {
+    this.autenticacionService.cerrarSesion();
+    this.router.navigate(['/login']);
   }
 
   /**

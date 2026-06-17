@@ -18,6 +18,8 @@
 @import './procesar-compra.estilos.css';
 @import './grafica.estilos.css';
 @import './correo.estilos.css';
+@import './alerta-mensaje.estilos.css';
+@import './notificacion-toast.estilos.css';
 
 
 /**

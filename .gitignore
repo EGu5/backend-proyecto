@@ -7,7 +7,9 @@
 /bazel-out
 
 # Node
-/node_modules
+node_modules/
+**/node_modules/
+/logs
 npm-debug.log
 yarn-error.log
 
@@ -36,6 +38,7 @@ yarn-error.log
 /coverage
 /libpeerconnection.log
 testem.log
+*.log
 /typings
 __screenshots__/
 
@@ -44,3 +47,4 @@ __screenshots__/
 Thumbs.db
 
 /pruebas/*
+.env

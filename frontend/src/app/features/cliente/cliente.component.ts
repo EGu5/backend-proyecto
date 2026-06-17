@@ -7,6 +7,7 @@ import { ItemCarrito } from '../../core/models/carrito.model';
 import { AutenticacionService } from '../../core/services/autenticacion.service';
 import { CarritoService } from '../../core/services/carrito.service';
 import { PedidoService, PedidoHistorico } from '../../core/services/pedido.service';
+import { ProductosService } from '../../core/services/productos.service';
 
 /**
  * Componente: ClienteComponent
@@ -63,118 +64,41 @@ export class ClienteComponent implements OnInit, OnDestroy {
    *   - autenticacionService (AutenticacionService): Servicio de sesión.
    *   - carritoService (CarritoService): Servicio del carrito de compras.
    *   - pedidoService (PedidoService): Servicio para la gestión de pedidos activos.
+   *   - productosService (ProductosService): Servicio para consultar productos del backend.
    */
   constructor(
     private router: Router,
     public autenticacionService: AutenticacionService,
     private carritoService: CarritoService,
-    private pedidoService: PedidoService
+    private pedidoService: PedidoService,
+    private productosService: ProductosService
   ) {}
 
   /**
    * Intención: Inicializar el catálogo de productos al montar el componente.
    */
   ngOnInit(): void {
-    this.cargarProductos();
+    this.productosService.obtenerProductos().subscribe({
+      next: productos => {
+        this.listaProductos.set(productos);
+      }
+    });
     
-    // Si el usuario está autenticado y no hay un pedido activo aún, podemos simular que tiene uno previo activo
-    if (this.autenticacionService.estaAutenticado() && !this.pedidoService.pedidoActivo()) {
-      const productosMock = this.listaProductos();
-      const itemsMock = [
-        { producto: productosMock[0], cantidad: 2 }, // Pepperoni Supreme
-        { producto: productosMock[4], cantidad: 3 }  // Cerveza Porter
-      ];
-      this.pedidoService.crearPedido(itemsMock, 'domicilio', 'Av. Insurgentes 450, C.P. 01000', '5512345678', 'efectivo');
+    // Si el usuario está autenticado y no hay un pedido activo aún, cargar el historial real de compras
+    if (this.autenticacionService.estaAutenticado()) {
+      const idCliente = this.autenticacionService.idClienteActual();
+      if (idCliente) {
+        this.pedidoService.cargarHistorial(idCliente);
+      }
     }
   }
 
   /**
-   * Intención: Limpiar recursos al destruir el componente, como el temporizador de simulación.
+   * Intención: Limpiar recursos al destruir el componente.
    */
   ngOnDestroy(): void {}
 
-  /**
-   * Intención: Cargar una lista inicial de productos con imágenes ilustrativas premium.
-   * Parámetros: Ninguno.
-   * Retorno: void.
-   */
-  private cargarProductos(): void {
-    const productosIniciales: Producto[] = [
-      {
-        id: 1,
-        nombre: 'Pepperoni Supreme',
-        ingredientes: 'Extra queso mozzarella premium, pepperoni artesanal curado, orégano',
-        precio: 249,
-        categoria: 'pizza',
-        tamano: 'familiar',
-        imagenUrl: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=400&q=80'
-      },
-      {
-        id: 2,
-        nombre: 'Mexicana Especial',
-        ingredientes: 'Chorizo premium, jalapeños en rodajas, cebolla morada caramelizada y frijoles refritos',
-        precio: 259,
-        categoria: 'pizza',
-        tamano: 'familiar',
-        imagenUrl: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=400&q=80'
-      },
-      {
-        id: 3,
-        nombre: 'Hawaiana Suprema',
-        ingredientes: 'Jamón premium en cubos, piña dulce caramelizada y doble queso mozzarella',
-        precio: 229,
-        categoria: 'pizza',
-        tamano: 'familiar',
-        imagenUrl: 'https://images.unsplash.com/photo-1594007654729-407eedc4be65?auto=format&fit=crop&w=400&q=80'
-      },
-      {
-        id: 4,
-        nombre: 'Cuatro Quesos Italiana',
-        ingredientes: 'Mozzarella de búfala, queso azul gorgonzola, parmesano reggiano de 24 meses y queso de cabra',
-        precio: 289,
-        categoria: 'pizza',
-        tamano: 'familiar',
-        imagenUrl: 'https://images.unsplash.com/photo-1573821663912-569905455b1c?auto=format&fit=crop&w=400&q=80'
-      },
-      {
-        id: 5,
-        nombre: 'Cerveza Artesanal Porter',
-        ingredientes: 'Agua de manantial, maltas tostadas, lúpulos seleccionados, notas de cacao',
-        precio: 85,
-        categoria: 'bebida',
-        tamano: 'individual',
-        imagenUrl: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=400&q=80'
-      },
-      {
-        id: 6,
-        nombre: 'Refresco Italiano Limón',
-        ingredientes: 'Extracto de limones de Sicilia, agua carbonatada premium, hojas de menta',
-        precio: 55,
-        categoria: 'bebida',
-        tamano: 'individual',
-        imagenUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&q=80'
-      },
-      {
-        id: 7,
-        nombre: 'Tiramisú de la Casa',
-        ingredientes: 'Bizcocho bañado en espresso y licor Amaretto, crema mascarpone, cocoa belga',
-        precio: 125,
-        categoria: 'postre',
-        tamano: 'individual',
-        imagenUrl: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?auto=format&fit=crop&w=400&q=80'
-      },
-      {
-        id: 8,
-        nombre: 'Panna Cotta de Vainilla',
-        ingredientes: 'Crema de vainilla de Papantla, coulis de frambuesa fresca',
-        precio: 110,
-        categoria: 'postre',
-        tamano: 'individual',
-        imagenUrl: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=400&q=80'
-      }
-    ];
-    this.listaProductos.set(productosIniciales);
-  }
+
 
   /**
    * Intención: Filtrar reactivamente los productos por categoría y por el término de búsqueda.

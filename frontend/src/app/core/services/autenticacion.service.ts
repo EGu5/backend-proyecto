@@ -1,9 +1,11 @@
 import { Injectable, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, tap, map, catchError, of } from 'rxjs';
 import { Usuario } from '../models/usuario.model';
 
 /**
  * Servicio: AutenticacionService
- * Intención: Gestionar de manera centralizada la sesión activa de un usuario de forma simulada en el frontend.
+ * Intención: Gestionar la sesión activa del usuario consultando de forma asíncrona la API del backend.
  */
 @Injectable({
   providedIn: 'root'
@@ -12,126 +14,110 @@ export class AutenticacionService {
   /** Signal reactivo que almacena la información del usuario autenticado actualmente, o null si es anónimo. */
   usuarioActual = signal<Usuario | null>(null);
 
-  /** Almacena temporalmente en memoria los usuarios registrados y sus contraseñas. */
-  private usuariosRegistrados = new Map<string, { usuario: Usuario; contrasenia: string }>();
+  /** Almacena el idCliente asociado al usuario autenticado (si aplica) para registrar pedidos. */
+  idClienteActual = signal<number | null>(null);
+
+  /** Dirección base del endpoint del backend */
+  private readonly apiHost = 'http://localhost:3000/api/autenticacion';
 
   /**
-   * Intención: Iniciar sesión de forma simulada validando las credenciales especificadas.
+   * Constructor de AutenticacionService.
+   * Intención: Inyectar el cliente HTTP para conectar con la API.
+   * Parámetros:
+   *   - http (HttpClient): Instancia del cliente HTTP.
+   */
+  constructor(private http: HttpClient) {}
+
+  /**
+   * Inicia sesión del usuario validando credenciales contra la base de datos real.
+   * Intención: Autenticar al usuario e hidratar su rol y sesión activa en la aplicación.
    * Parámetros:
    *   - correo (string): Correo del usuario.
    *   - contrasenia (string): Contraseña de acceso.
-   * Retorno: boolean - true si las credenciales coinciden con algún usuario registrado y se inicia la sesión, false de lo contrario.
-   * Casos límite:
-   *   - Si el correo o la contraseña están vacíos, retorna false.
+   * Retorno: Observable<boolean> - true si el inicio de sesión es exitoso, false de lo contrario.
    */
-  iniciarSesion(correo: string, contrasenia: string): boolean {
+  iniciarSesion(correo: string, contrasenia: string): Observable<boolean> {
     if (!correo || !contrasenia) {
-      return false;
+      return of(false);
     }
 
-    const emailNormalizado = correo.trim().toLowerCase();
+    return this.http.post<{ exito: boolean; datos: any }>(`${this.apiHost}/login`, {
+      correo: correo.trim().toLowerCase(),
+      contrasena: contrasenia.trim()
+    }).pipe(
+      map(respuesta => {
+        if (respuesta.exito && respuesta.datos) {
+          const datos = respuesta.datos;
+          // Normalizar rol 'administrador' de la DB a 'admin' usado en frontend
+          let rolFront: 'cliente' | 'empleado' | 'admin' = 'cliente';
+          if (datos.rol === 'administrador') {
+            rolFront = 'admin';
+          } else if (datos.rol === 'empleado') {
+            rolFront = 'empleado';
+          }
 
-    // Credenciales de Cliente por defecto
-    if (emailNormalizado === 'cliente@pizza.com' && contrasenia === '123456') {
-      this.usuarioActual.set({
-        id: 1,
-        nombre: 'Cliente de Prueba',
-        correo: 'cliente@pizza.com',
-        rol: 'cliente'
-      });
-      return true;
-    }
+          const usuario: Usuario = {
+            id: datos.id,
+            nombre: `${datos.nombre || ''} ${datos.apellido || ''}`.trim() || datos.correo,
+            correo: datos.correo,
+            rol: rolFront
+          };
 
-    // Credenciales de Empleado por defecto
-    if (emailNormalizado === 'empleado@pizza.com' && contrasenia === '123456') {
-      this.usuarioActual.set({
-        id: 2,
-        nombre: 'Empleado de Prueba',
-        correo: 'empleado@pizza.com',
-        rol: 'empleado'
-      });
-      return true;
-    }
-
-    // Credenciales de Administrador por defecto
-    if (emailNormalizado === 'admin@pizza.com' && contrasenia === '123456') {
-      this.usuarioActual.set({
-        id: 3,
-        nombre: 'Administrador de Prueba',
-        correo: 'admin@pizza.com',
-        rol: 'admin'
-      });
-      return true;
-    }
-
-    // Validar contra usuarios creados dinámicamente
-    const registroFicticio = this.usuariosRegistrados.get(emailNormalizado);
-    if (registroFicticio && registroFicticio.contrasenia === contrasenia) {
-      this.usuarioActual.set(registroFicticio.usuario);
-      return true;
-    }
-
-    return false;
+          this.usuarioActual.set(usuario);
+          this.idClienteActual.set(datos.idCliente || null);
+          return true;
+        }
+        return false;
+      }),
+      catchError(() => of(false))
+    );
   }
 
   /**
-   * Intención: Registrar un nuevo usuario con rol de cliente de manera simulada en memoria.
+   * Registra un nuevo usuario con rol de cliente en la base de datos MySQL real.
+   * Intención: Insertar credenciales de usuario y datos de perfil de cliente en el sistema.
    * Parámetros:
-   *   - nombre (string): Nombre completo del nuevo cliente.
-   *   - correo (string): Dirección de correo electrónico única.
-   *   - contrasenia (string): Contraseña secreta elegida.
-   * Retorno: boolean - true si el registro fue exitoso, false si el correo ya existe o algún campo es inválido.
-   * Casos límite:
-   *   - Si el correo ya está registrado por defecto o dinámicamente, retorna false.
+   *   - nombre (string): Nombre.
+   *   - correo (string): Dirección de correo electrónico.
+   *   - contrasenia (string): Contraseña elegida.
+   * Retorno: Observable<boolean> - true si el registro fue exitoso, false si falló.
    */
-  registrar(nombre: string, correo: string, contrasenia: string): boolean {
+  registrar(nombre: string, correo: string, contrasenia: string): Observable<boolean> {
     if (!nombre || !correo || !contrasenia) {
-      return false;
+      return of(false);
     }
 
-    const emailNormalizado = correo.trim().toLowerCase();
+    // Para fines del registro de Cliente, dividimos el nombre en nombre y apellido de prueba
+    const partesNombre = nombre.trim().split(' ');
+    const primerNombre = partesNombre[0];
+    const apellido = partesNombre.slice(1).join(' ') || 'López'; // Apellido por defecto para la base de datos
 
-    // Verificar si el correo ya está ocupado por credenciales por defecto o previas
-    const correoOcupado = 
-      emailNormalizado === 'cliente@pizza.com' ||
-      emailNormalizado === 'empleado@pizza.com' ||
-      emailNormalizado === 'admin@pizza.com' ||
-      this.usuariosRegistrados.has(emailNormalizado);
-
-    if (correoOcupado) {
-      return false;
-    }
-
-    const nuevoUsuario: Usuario = {
-      id: Math.floor(1000 + Math.random() * 9000),
-      nombre: nombre.trim(),
-      correo: emailNormalizado,
-      rol: 'cliente' // Por defecto el rol es de cliente
-    };
-
-    this.usuariosRegistrados.set(emailNormalizado, {
-      usuario: nuevoUsuario,
-      contrasenia: contrasenia
-    });
-
-    return true;
+    return this.http.post<{ exito: boolean; datos: any }>(`${this.apiHost}/registro`, {
+      nombre: primerNombre,
+      apellido: apellido,
+      correo: correo.trim().toLowerCase(),
+      contrasena: contrasenia.trim(),
+      telefono: '55' + Math.floor(10000000 + Math.random() * 90000000).toString(), // Generación de teléfono ficticio para la tabla Cliente
+      direccion: ''
+    }).pipe(
+      map(respuesta => respuesta.exito),
+      catchError(() => of(false))
+    );
   }
 
   /**
-   * Intención: Finalizar la sesión actual del usuario, limpiando el estado.
-   * Parámetros: Ninguno.
+   * Finaliza la sesión actual del usuario, limpiando el estado.
+   * Intención: Remover credenciales de memoria.
    * Retorno: void.
-   * Casos límite: Ninguno.
    */
   cerrarSesion(): void {
     this.usuarioActual.set(null);
+    this.idClienteActual.set(null);
   }
 
   /**
-   * Intención: Verificar si existe un usuario autenticado en el sistema.
-   * Parámetros: Ninguno.
-   * Retorno: boolean - true si hay un usuario autenticado, false de lo contrario.
-   * Casos límite: Ninguno.
+   * Verifica si existe un usuario autenticado en el sistema.
+   * Retorno: boolean.
    */
   estaAutenticado(): boolean {
     return this.usuarioActual() !== null;

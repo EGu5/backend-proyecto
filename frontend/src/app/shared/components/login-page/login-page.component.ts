@@ -76,7 +76,7 @@ export class LoginPageComponent implements OnInit {
     });
 
     // Poner credenciales sugeridas por defecto (Cliente) para facilitar pruebas
-    this.correo.set('cliente@pizza.com');
+    this.correo.set('cliente.juan@correo.com');
     this.contrasenia.set('123456');
   }
 
@@ -103,25 +103,25 @@ export class LoginPageComponent implements OnInit {
       return;
     }
 
-    const exito = this.autenticacionService.iniciarSesion(usuario, contrasenia);
+    this.autenticacionService.iniciarSesion(usuario, contrasenia).subscribe(exito => {
+      if (exito) {
+        this.mensajeError.set('');
+        const usuarioLogueado = this.autenticacionService.usuarioActual();
 
-    if (exito) {
-      this.mensajeError.set('');
-      const usuarioLogueado = this.autenticacionService.usuarioActual();
-
-      if (usuarioLogueado) {
-        const rol = usuarioLogueado.rol;
-        if (rol === 'cliente') {
-          this.router.navigateByUrl(this.rutaRedireccion());
-        } else if (rol === 'empleado') {
-          this.router.navigate(['/empleado']);
-        } else if (rol === 'admin') {
-          this.router.navigate(['/administrador']);
+        if (usuarioLogueado) {
+          const rol = usuarioLogueado.rol;
+          if (rol === 'cliente') {
+            this.router.navigateByUrl(this.rutaRedireccion());
+          } else if (rol === 'empleado') {
+            this.router.navigate(['/empleado']);
+          } else if (rol === 'admin') {
+            this.router.navigate(['/administrador']);
+          }
         }
+      } else {
+        this.mensajeError.set('Correo electrónico o contraseña incorrectos.');
       }
-    } else {
-      this.mensajeError.set('Correo electrónico o contraseña incorrectos.');
-    }
+    });
   }
 
   /**
@@ -184,21 +184,22 @@ export class LoginPageComponent implements OnInit {
       return;
     }
 
-    const registrado = this.autenticacionService.registrar(nombreVal, correoVal, contraVal);
+    this.autenticacionService.registrar(nombreVal, correoVal, contraVal).subscribe(registrado => {
+      if (registrado) {
+        this.mensajeError.set('');
+        this.mensajeExito.set('¡Cuenta creada con éxito! Iniciando sesión...');
 
-    if (registrado) {
-      this.mensajeError.set('');
-      this.mensajeExito.set('¡Cuenta creada con éxito! Iniciando sesión...');
-
-      // Simular login automático tras un breve periodo
-      setTimeout(() => {
-        const exitoLogin = this.autenticacionService.iniciarSesion(correoVal, contraVal);
-        if (exitoLogin) {
-          this.router.navigateByUrl(this.rutaRedireccion());
-        }
-      }, 1200);
-    } else {
-      this.mensajeError.set('El correo electrónico ya se encuentra registrado.');
-    }
+        // Iniciar sesión automático tras un breve periodo
+        setTimeout(() => {
+          this.autenticacionService.iniciarSesion(correoVal, contraVal).subscribe(exitoLogin => {
+            if (exitoLogin) {
+              this.router.navigateByUrl(this.rutaRedireccion());
+            }
+          });
+        }, 1200);
+      } else {
+        this.mensajeError.set('El correo electrónico ya se encuentra registrado o hubo un error.');
+      }
+    });
   }
 }

@@ -1,0 +1,177 @@
+/**
+ * Estilos para el Componente de Notificaciones Flotantes (NotificacionToastComponent)
+ * Propósito: Definir la presentación y el apilamiento de notificaciones tipo Toast con prioridad z-index alta,
+ *            con efectos visuales modernos y transiciones de animación fluidas.
+ * Dónde se utiliza: Utilizado en el componente standalone app-notificacion-toast (notificacion-toast.component.ts)
+ */
+
+/* Contenedor flotante global en la esquina superior derecha */
+.contenedor-toasts {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 380px;
+  pointer-events: none; /* Permite clicks a través del contenedor vacío */
+  font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+/* Tarjeta de notificación individual */
+.toast-tarjeta {
+  pointer-events: auto; /* Reactiva los clicks en la tarjeta */
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  animation: deslizarEntrada 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: all 0.2s ease;
+}
+
+/* Animación de entrada por la derecha */
+@keyframes deslizarEntrada {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Estilo: Error (Acentos: #d6254d, #ff5475) */
+.toast-error {
+  background-color: #ffffff;
+  border-color: #ff5475;
+  border-left: 5px solid #d6254d;
+  color: #1f2937;
+}
+
+.toast-error .toast-icono {
+  color: #d6254d;
+}
+
+/* Estilo: Advertencia/Alerta (Acentos: #ff9036, #fdeba9) */
+.toast-advertencia {
+  background-color: #ffffff;
+  border-color: #ff9036;
+  border-left: 5px solid #ff9036;
+  color: #1f2937;
+}
+
+.toast-advertencia .toast-icono {
+  color: #ff9036;
+}
+
+/* Estilo: Aceptado/Exito (Acentos: #f6d76b) */
+.toast-aceptado {
+  background-color: #ffffff;
+  border-color: #f6d76b;
+  border-left: 5px solid #f6d76b;
+  color: #1f2937;
+}
+
+.toast-aceptado .toast-icono {
+  color: #bfa110;
+}
+
+/* Iconos de las notificaciones */
+.toast-icono {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Contenido del texto */
+.toast-contenido {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toast-mensaje {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.toast-codigo {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: #6b7280;
+  background-color: #f3f4f6;
+  padding: 1px 5px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+/* Botón de cerrar */
+.toast-cerrar {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  color: #9ca3af;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-cerrar:hover {
+  color: #4b5563;
+  background-color: #f3f4f6;
+}
+
+/* Responsive para pantallas móviles */
+@media (max-width: 480px) {
+  .contenedor-toasts {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* Adaptación a Modo Oscuro (.dark) */
+.dark .toast-error {
+  background-color: #2D2426 !important;
+  border-color: #d6254d !important;
+  border-left: 5px solid #ff5475 !important;
+  color: #FFF8E7 !important;
+}
+
+.dark .toast-advertencia {
+  background-color: #2D2426 !important;
+  border-color: #ff9036 !important;
+  border-left: 5px solid #ff9036 !important;
+  color: #FFF8E7 !important;
+}
+
+.dark .toast-aceptado {
+  background-color: #2D2426 !important;
+  border-color: #f6d76b !important;
+  border-left: 5px solid #fdeba9 !important;
+  color: #FFF8E7 !important;
+}
+
+.dark .toast-codigo {
+  background-color: #4B383C !important;
+  color: #D9CFC0 !important;
+}
+
+.dark .toast-cerrar:hover {
+  color: #FFF8E7 !important;
+  background-color: #4B383C !important;
+}

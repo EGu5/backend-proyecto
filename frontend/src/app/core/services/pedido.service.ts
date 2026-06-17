@@ -1,22 +1,18 @@
 import { Injectable, signal, computed } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { ItemCarrito } from '../models/carrito.model';
-import { PEDIDOS_MOCK, CORTES_CAJA_MOCK, FACTURAS_MOCK } from '../models/datos-simulados';
+import { AutenticacionService } from './autenticacion.service';
+import { CORTES_CAJA_MOCK, FACTURAS_MOCK } from '../models/datos-simulados';
 
 /**
  * Interfaz que representa la estructura de un pedido activo en el sistema.
  */
 export interface PedidoActivo {
-  /** Identificador único del pedido (ej. #4928). */
   id: string;
-  /** Estado actual de la preparación (Preparando, En el horno, En camino, Entregado). */
   estado: string;
-  /** Porcentaje numérico del progreso (0 a 100). */
   progreso: number;
-  /** Tiempo estimado de entrega restante en minutos. */
   minutos: number;
-  /** Lista de productos incluidos en el pedido actual. */
   productos: ItemCarrito[];
-  /** Detalles adicionales del envío (opcional). */
   detallesEntrega?: {
     metodo: string;
     direccion?: string;
@@ -27,38 +23,22 @@ export interface PedidoActivo {
 
 /**
  * Interfaz que representa un pedido histórico realizado por el cliente.
- * Conforme a la solicitud del usuario para desglosar la información detallada.
  */
 export interface PedidoHistorico {
-  /** Identificador único del pedido (ej. #3821). */
   id: string;
-  /** Fecha y hora en formato legible (ej. 09/06/2026, 19:42). */
   fechaHora: string;
-  /** Costo total final de la compra. */
   total: number;
-  /** Estado de la compra: 'pagado', 'cancelado', 'En preparación', 'En camino', 'Entregado'. */
   estado: string;
-  /** Método de entrega: 'recogió en sucursal' o 'a domicilio'. */
   metodoEntrega: 'recogió en sucursal' | 'a domicilio';
-  /** Dirección de envío si aplica. */
   direccion?: string;
-  /** Teléfono de contacto registrado. */
   telefono: string;
-  /** Método de pago detallado. */
   metodoPago: string;
-  /** Cantidad total de productos comprados. */
   cantidadTotal: number;
-  /** Lista completa de productos adquiridos. */
   productos: ItemCarrito[];
-  /** Porcentaje del progreso (si está activo). */
   progreso?: number;
-  /** Minutos restantes (si está activo). */
   minutos?: number;
 }
 
-/**
- * Interfaz para modelar una Factura (CFDI) dentro del flujo.
- */
 export interface FacturaDetalle {
   id: string;
   fechaHora: string;
@@ -74,29 +54,19 @@ export interface FacturaDetalle {
   uuid: string;
 }
 
-/**
- * Interfaz que representa el corte de caja diario realizado por un empleado.
- */
 export interface CorteCaja {
-  /** Identificador único del corte (ej. #C-4921). */
   id: string;
-  /** Fecha del corte (ej. 11/06/2026). */
   fecha: string;
-  /** Nombre del empleado que realizó el corte. */
   empleado: string;
-  /** Monto total acumulado en ventas del día. */
   totalVentas: number;
-  /** Número de pedidos que se cobraron e incluyeron en el corte. */
   cantidadPedidos: number;
-  /** Comentarios u observaciones del personal de caja. */
   observaciones?: string;
-  /** Estado del corte: 'Pendiente' o 'Aprobado' por el administrador. */
   estado: 'Pendiente' | 'Aprobado';
 }
 
 /**
  * Servicio: PedidoService
- * Intención: Gestionar y centralizar de forma reactiva el estado de los pedidos del cliente en el frontend.
+ * Intención: Gestionar y centralizar las peticiones de pedidos contra el backend.
  */
 @Injectable({
   providedIn: 'root'
@@ -114,25 +84,25 @@ export class PedidoService {
   /** Signal reactivo que almacena la lista de facturas generadas. */
   listaFacturas = signal<FacturaDetalle[]>([]);
 
-  /** Signal reactivo que almacena el pedido seleccionado para facturar por el administrador o el cliente. */
+  /** Signal reactivo que almacena el pedido seleccionado para facturar. */
   pedidoParaFacturar = signal<PedidoHistorico | null>(null);
 
-  /** Referencia del intervalo de simulación activa para limpiar la suscripción cuando termine. */
-  private intervaloSimulacion: any = null;
+  private readonly apiHost = 'http://localhost:3000/api/pedidos';
 
   /**
-   * Constructor del servicio.
-   * Intención: Inicializar el historial con algunos pedidos mockeados para pruebas realistas.
+   * Constructor del servicio de pedidos.
+   * Intención: Inyectar dependencias y cargar datos mock complementarios.
    */
-  constructor() {
-    this.historialPedidos.set(PEDIDOS_MOCK);
+  constructor(
+    private http: HttpClient,
+    private autenticacionService: AutenticacionService
+  ) {
     this.cortesCaja.set(CORTES_CAJA_MOCK);
     this.listaFacturas.set(FACTURAS_MOCK);
   }
 
   /**
-   * Intención: Calcular de forma reactiva el monto total acumulado del pedido activo.
-   * Retorno: number - Total monetario en pesos mexicanos.
+   * Calcula de forma reactiva el monto total acumulado del pedido activo.
    */
   totalPedidoActivo = computed(() => {
     const pedido = this.pedidoActivo();
@@ -141,14 +111,26 @@ export class PedidoService {
   });
 
   /**
-   * Intención: Crear un nuevo pedido activo en el sistema a partir de los datos de checkout y arrancar la simulación.
+   * Carga el historial de compras real de un cliente desde la API.
+   * Intención: Sincronizar el panel del cliente con sus órdenes pasadas de la base de datos MySQL.
    * Parámetros:
-   *   - productos (ItemCarrito[]): Artículos del pedido.
-   *   - metodoEntrega (string): "domicilio" o "sucursal".
-   *   - direccion (string): Dirección física si aplica.
-   *   - telefono (string): Teléfono del cliente.
-   *   - metodoPago (string): Método de pago.
+   *   - idCliente (number): ID del cliente.
    * Retorno: void.
+   */
+  cargarHistorial(idCliente: number): void {
+    this.http.get<{ exito: boolean; datos: PedidoHistorico[] }>(`${this.apiHost}/historial/${idCliente}`)
+      .subscribe({
+        next: respuesta => {
+          if (respuesta.exito) {
+            this.historialPedidos.set(respuesta.datos);
+          }
+        }
+      });
+  }
+
+  /**
+   * Crea un nuevo pedido en la base de datos real.
+   * Intención: Registrar la orden y sus detalles en MySQL a través de la API.
    */
   crearPedido(
     productos: ItemCarrito[],
@@ -157,53 +139,48 @@ export class PedidoService {
     telefono: string,
     metodoPago: string
   ): void {
-    const idFicticio = '#' + Math.floor(1000 + Math.random() * 9000);
+    const idCliente = this.autenticacionService.idClienteActual() || 1;
     const totalCalc = productos.reduce((acumulado, item) => acumulado + (item.producto.precio * item.cantidad), 0) + (metodoEntrega === 'domicilio' ? 45 : 0);
-    const cantidadTotalCalc = productos.reduce((acumulado, item) => acumulado + item.cantidad, 0);
-    
-    const nuevoPedido: PedidoActivo = {
-      id: idFicticio,
-      estado: 'En preparación',
-      progreso: 10,
-      minutos: 15,
-      productos: [...productos],
-      detallesEntrega: {
-        metodo: metodoEntrega === 'domicilio' ? 'Entrega a Domicilio' : 'Recoger en Sucursal',
-        direccion: metodoEntrega === 'domicilio' ? direccion : 'Sucursal Principal (Centro)',
-        telefono,
-        metodoPago: metodoPago === 'tarjeta' ? 'Tarjeta de Crédito/Débito' : 'Efectivo al Recibir'
-      }
-    };
 
-    this.pedidoActivo.set(nuevoPedido);
-
-    // Agregar al historial de compras
-    const fechaActualStr = new Date().toLocaleString('es-MX', { hour12: false }).substring(0, 17);
-    const nuevoHistorico: PedidoHistorico = {
-      id: idFicticio,
-      fechaHora: fechaActualStr,
+    const cuerpo = {
+      idCliente,
+      idSucursal: 1, // Sucursal por defecto
       total: totalCalc,
-      estado: 'En preparación',
-      metodoEntrega: metodoEntrega === 'domicilio' ? 'a domicilio' : 'recogió en sucursal',
-      direccion: metodoEntrega === 'domicilio' ? direccion : 'Sucursal Principal (Centro)',
-      telefono,
-      metodoPago: metodoPago === 'tarjeta' ? 'Tarjeta de Crédito/Débito' : 'Efectivo al Recibir',
-      productos: [...productos],
-      cantidadTotal: cantidadTotalCalc,
-      progreso: 10,
-      minutos: 15
+      productos: productos.map(item => ({
+        idProducto: item.producto.id,
+        cantidad: item.cantidad,
+        precioUnitario: item.producto.precio
+      }))
     };
 
-    this.historialPedidos.set([nuevoHistorico, ...this.historialPedidos()]);
-    this.iniciarSimulacion();
+    this.http.post<{ exito: boolean; datos: { idPedido: number } }>(this.apiHost, cuerpo)
+      .subscribe({
+        next: respuesta => {
+          if (respuesta.exito) {
+            const nuevoId = `#${respuesta.datos.idPedido}`;
+
+            const nuevoPedido: PedidoActivo = {
+              id: nuevoId,
+              estado: 'Preparando',
+              progreso: 20,
+              minutos: 20,
+              productos: [...productos],
+              detallesEntrega: {
+                metodo: metodoEntrega === 'domicilio' ? 'Entrega a Domicilio' : 'Recoger en Sucursal',
+                direccion: metodoEntrega === 'domicilio' ? direccion : 'Sucursal Principal',
+                telefono,
+                metodoPago
+              }
+            };
+
+            this.pedidoActivo.set(nuevoPedido);
+            // Recargar historial para traer la información actualizada de la base de datos
+            this.cargarHistorial(idCliente);
+          }
+        }
+      });
   }
 
-  /**
-   * Intención: Incrementar la cantidad de un artículo directamente en el pedido activo.
-   * Parámetros:
-   *   - productoId (number): ID único del producto.
-   * Retorno: void.
-   */
   incrementarCantidad(productoId: number): void {
     const pedido = this.pedidoActivo();
     if (pedido) {
@@ -214,18 +191,9 @@ export class PedidoService {
         return item;
       });
       this.pedidoActivo.set({ ...pedido, productos: productosActualizados });
-
-      // Actualizar también en el historial
-      this.actualizarHistorialProductos(pedido.id, productosActualizados);
     }
   }
 
-  /**
-   * Intención: Decrementar la cantidad de un artículo directamente en el pedido activo. Si llega a 0, se remueve.
-   * Parámetros:
-   *   - productoId (number): ID único del producto.
-   * Retorno: void.
-   */
   decrementarCantidad(productoId: number): void {
     const pedido = this.pedidoActivo();
     if (pedido) {
@@ -239,9 +207,6 @@ export class PedidoService {
             return i;
           });
           this.pedidoActivo.set({ ...pedido, productos: productosActualizados });
-          
-          // Actualizar también en el historial
-          this.actualizarHistorialProductos(pedido.id, productosActualizados);
         } else {
           this.eliminarProducto(productoId);
         }
@@ -249,115 +214,19 @@ export class PedidoService {
     }
   }
 
-  /**
-   * Intención: Eliminar por completo un artículo del pedido activo. Si el pedido queda sin productos, se limpia.
-   * Parámetros:
-   *   - productoId (number): ID único del producto.
-   * Retorno: void.
-   */
   eliminarProducto(productoId: number): void {
     const pedido = this.pedidoActivo();
     if (pedido) {
       const productosActualizados = pedido.productos.filter(item => item.producto.id !== productoId);
       if (productosActualizados.length > 0) {
         this.pedidoActivo.set({ ...pedido, productos: productosActualizados });
-        
-        // Actualizar también en el historial
-        this.actualizarHistorialProductos(pedido.id, productosActualizados);
       } else {
         this.limpiarPedidoActivo();
       }
     }
   }
 
-  /**
-   * Intención: Auxiliar para mantener sincronizados los productos en el historial tras editar el pedido activo.
-   */
-  private actualizarHistorialProductos(pedidoId: string, productosActualizados: ItemCarrito[]): void {
-    const totalCalc = productosActualizados.reduce((acumulado, item) => acumulado + (item.producto.precio * item.cantidad), 0);
-    const cantidadTotalCalc = productosActualizados.reduce((acumulado, item) => acumulado + item.cantidad, 0);
-
-    const historialActualizado = this.historialPedidos().map(p => {
-      if (p.id === pedidoId) {
-        return {
-          ...p,
-          productos: productosActualizados,
-          total: totalCalc + (p.metodoEntrega === 'a domicilio' ? 45 : 0),
-          cantidadTotal: cantidadTotalCalc
-        };
-      }
-      return p;
-    });
-    this.historialPedidos.set(historialActualizado);
-  }
-
-  /**
-   * Intención: Limpiar el estado del pedido activo y detener cualquier simulación activa.
-   * Retorno: void.
-   */
   limpiarPedidoActivo(): void {
-    if (this.intervaloSimulacion) {
-      clearInterval(this.intervaloSimulacion);
-      this.intervaloSimulacion = null;
-    }
     this.pedidoActivo.set(null);
-  }
-
-  /**
-   * Intención: Iniciar el proceso de simulación en tiempo real del progreso de preparación y envío del pedido activo.
-   * Retorno: void.
-   */
-  iniciarSimulacion(): void {
-    if (this.intervaloSimulacion) {
-      clearInterval(this.intervaloSimulacion);
-    }
-
-    this.intervaloSimulacion = setInterval(() => {
-      const pedido = this.pedidoActivo();
-      if (!pedido) {
-        clearInterval(this.intervaloSimulacion);
-        this.intervaloSimulacion = null;
-        return;
-      }
-
-      let nuevoProgreso = pedido.progreso + 15;
-      let nuevoEstado = pedido.estado;
-      let nuevosMinutos = Math.max(0, pedido.minutos - 3);
-
-      if (nuevoProgreso >= 100) {
-        nuevoProgreso = 100;
-        nuevoEstado = 'Entregado';
-        nuevosMinutos = 0;
-        clearInterval(this.intervaloSimulacion);
-        this.intervaloSimulacion = null;
-      } else if (nuevoProgreso >= 70) {
-        nuevoEstado = 'En camino';
-      } else if (nuevoProgreso >= 40) {
-        nuevoEstado = 'En el horno';
-      }
-
-      const actualizado = {
-        ...pedido,
-        progreso: nuevoProgreso,
-        estado: nuevoEstado,
-        minutos: nuevosMinutos
-      };
-
-      this.pedidoActivo.set(actualizado);
-
-      // Actualizar también en el historial
-      const historialActualizado = this.historialPedidos().map(p => {
-        if (p.id === pedido.id) {
-          return {
-            ...p,
-            estado: nuevoEstado === 'Entregado' ? 'pagado' : nuevoEstado,
-            progreso: nuevoProgreso,
-            minutos: nuevosMinutos
-          };
-        }
-        return p;
-      });
-      this.historialPedidos.set(historialActualizado);
-    }, 12000); // Se actualiza el estado cada 12 segundos
   }
 }

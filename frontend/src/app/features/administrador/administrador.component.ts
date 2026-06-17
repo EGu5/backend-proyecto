@@ -1,6 +1,8 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AutenticacionService } from '../../core/services/autenticacion.service';
 
 // Servicios
 import { PedidoService, PedidoHistorico } from '../../core/services/pedido.service';
@@ -104,6 +106,18 @@ export interface FacturaAdmin {
 export class AdministradorComponent implements OnInit {
   public servicioPedidos = inject(PedidoService);
   private servicioAlertas = inject(AlertasService);
+  private autenticacionService = inject(AutenticacionService);
+  private router = inject(Router);
+
+  /**
+   * Intención: Finalizar la sesión del administrador activo y redirigir al login.
+   * Parámetros: Ninguno.
+   * Retorno: void.
+   */
+  cerrarSesion(): void {
+    this.autenticacionService.cerrarSesion();
+    this.router.navigate(['/login']);
+  }
 
   // Información del Administrador
   nombreRol: string = 'Administrador General';

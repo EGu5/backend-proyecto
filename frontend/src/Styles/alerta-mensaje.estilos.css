@@ -1,0 +1,160 @@
+/**
+ * Estilos para el Componente de Alertas y Errores (AlertaMensajeComponent)
+ * Propósito: Definir la visualización estética de las notificaciones, alertas y mensajes de éxito
+ *            usando la paleta de colores del proyecto y garantizando responsividad y legibilidad.
+ * Dónde se utiliza: Utilizado en el componente standalone app-alerta-mensaje (alerta-mensaje.component.ts)
+ */
+
+/* Contenedor principal de la alerta */
+.contenedor-alerta {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  border: 2px solid;
+  padding: 16px;
+  margin: 16px 0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  position: relative;
+  font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+/* Variación: ERROR (#d6254d como color principal, #ff5475 suave como fondo/borde) */
+.alerta-error {
+  background-color: #fdeef1;
+  border-color: #ff5475;
+  color: #d6254d;
+}
+
+/* Variación: ALERTA (#ff9036 como color principal, #fdeba9 como fondo/borde) */
+.alerta-advertencia {
+  background-color: #fffaf0;
+  border-color: #ff9036;
+  color: #7b341e; /* Contraste para legibilidad */
+}
+
+/* Variación: ACEPTADO / ÉXITO (Usando tonos de #f6d76b y acentos suaves) */
+.alerta-aceptado {
+  background-color: #fdfae6;
+  border-color: #f6d76b;
+  color: #5d4a04; /* Contraste para legibilidad */
+}
+
+/* Encabezado de la alerta (Icono, título y botón cerrar) */
+.alerta-encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alerta-cuerpo-mensaje {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.alerta-icono {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.alerta-mensaje-usuario {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Botón para cerrar la alerta */
+.alerta-boton-cerrar {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  border-radius: 4px;
+}
+
+.alerta-boton-cerrar:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Botón y sección de detalles técnicos */
+.alerta-detalles-boton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: underline;
+  color: inherit;
+  margin-top: 8px;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.alerta-detalles-boton:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.alerta-detalles-contenedor {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.1);
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.alerta-detalle-item {
+  line-height: 1.4;
+}
+
+.alerta-detalle-etiqueta {
+  font-weight: 700;
+}
+
+.alerta-detalle-valor {
+  font-family: monospace;
+  background-color: rgba(0, 0, 0, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+/* Adaptación para modo oscuro si la clase .dark está activa */
+.dark .alerta-error {
+  background-color: #3d1b1f !important;
+  border-color: #d6254d !important;
+  color: #ff5475 !important;
+}
+
+.dark .alerta-advertencia {
+  background-color: #3b271d !important;
+  border-color: #ff9036 !important;
+  color: #fdeba9 !important;
+}
+
+.dark .alerta-aceptado {
+  background-color: #332d1e !important;
+  border-color: #f6d76b !important;
+  color: #fdeba9 !important;
+}
+
+.dark .alerta-detalle-valor {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}

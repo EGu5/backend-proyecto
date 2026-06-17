@@ -1,6 +1,6 @@
 <button 
   (click)="conmutarTema()" 
-  class="fixed bottom-8 left-8 z-50 p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer bg-white text-[#d6254d] border border-gray-150 dark:bg-[#3D2E31] dark:text-[#fdeba9] dark:border-[#4B383C]"
+  [ngClass]="obtenerClasePosicion()"
   title="Cambiar tema de la pantalla"
   aria-label="Alternar modo oscuro o claro">
   

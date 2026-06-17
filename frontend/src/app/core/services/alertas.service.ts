@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 
 /**
  * Interfaz que representa la estructura estandarizada de un error o alerta en el sistema.
@@ -14,6 +14,22 @@ export interface AlertaError {
   /** Explicación no técnica orientada al usuario final. */
   mensajeUsuario: string;
 }
+
+/**
+ * Interfaz que representa una notificación flotante activa tipo Toast.
+ * Intención: Almacenar la información que se mostrará temporalmente en la pantalla con alta prioridad.
+ */
+export interface NotificacionToast {
+  /** Identificador único auto-generado de la notificación. */
+  id: string;
+  /** Tipo de notificación. */
+  tipo: 'error' | 'alerta' | 'aceptado';
+  /** Mensaje amigable para el usuario común. */
+  mensaje: string;
+  /** Código de error asociado (opcional). */
+  codigo?: string;
+}
+
 
 /**
  * Servicio: AlertasService
@@ -120,5 +136,55 @@ export class AlertasService {
       explicacionDesarrollador: explDev,
       mensajeUsuario: msgUsuario
     };
+  }
+
+  /** Lista reactiva interna de notificaciones flotantes activas en pantalla. */
+  private readonly notificacionesActivas = signal<NotificacionToast[]>([]);
+
+  /**
+   * Exposición pública y de solo lectura del listado de notificaciones flotantes.
+   * Intención: Permitir al componente NotificacionToastComponent suscribirse a los cambios.
+   */
+  readonly notificaciones = this.notificacionesActivas.asReadonly();
+
+  /**
+   * Lanza una nueva notificación flotante con alta prioridad, agregándola a la pila en pantalla.
+   * Intención: Mostrar un mensaje visual temporal sin interrumpir el flujo del usuario.
+   * Parámetros:
+   *   - mensaje (string): Contenido textual amigable para el usuario común.
+   *   - tipo ('error' | 'alerta' | 'aceptado'): Tipo/diseño del toast.
+   *   - duracionMs (number, opcional): Tiempo de visualización antes del auto-cierre. Por defecto 5000ms.
+   *   - codigo (string, opcional): Código técnico asociado si existe.
+   * Retorno: void.
+   */
+  lanzarNotificacion(
+    mensaje: string,
+    tipo: 'error' | 'alerta' | 'aceptado',
+    duracionMs: number = 5000,
+    codigo?: string
+  ): void {
+    const id = Math.random().toString(36).substring(2, 9);
+    const nueva: NotificacionToast = { id, tipo, mensaje, codigo };
+
+    // Agregar a la pila
+    this.notificacionesActivas.update(lista => [...lista, nueva]);
+
+    // Programar la eliminación automática
+    if (duracionMs > 0) {
+      setTimeout(() => {
+        this.removerNotificacion(id);
+      }, duracionMs);
+    }
+  }
+
+  /**
+   * Remueve una notificación flotante activa de la pila a partir de su identificador.
+   * Intención: Cerrar manualmente o automáticamente una alerta toast.
+   * Parámetros:
+   *   - id (string): Identificador único de la notificación.
+   * Retorno: void.
+   */
+  removerNotificacion(id: string): void {
+    this.notificacionesActivas.update(lista => lista.filter(item => item.id !== id));
   }
 }
