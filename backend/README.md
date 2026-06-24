@@ -101,3 +101,10 @@ El archivo `.env` configura el comportamiento y la conectividad del servidor. La
 * `CLAVE_ENCRIPTACION`: Clave utilizada para cifrar información sensible antes de persistirla.
 * `NIVEL_LOG`: Nivel de detalle para los logs de la consola (ej. `info`, `error`).
 * `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS`: Configuración de servidor de correo emisor para notificaciones del sistema.
+
+---
+
+## Inicialización Automática de Tablas
+El servidor cuenta con un mecanismo de comprobación automática de persistencia al arrancar ([inicializarTablas.js](file:///c:/Users/Moozzeess/OneDrive/Documentos/Escuela/Programación/Backend/Angular/proyecto/backend/configuracion/inicializarTablas.js)). 
+* Si el servidor se conecta a una base de datos MySQL vacía, el sistema creará automáticamente todas las tablas necesarias en el orden correcto de llaves foráneas.
+* Si detecta que no hay registros iniciales, poblará automáticamente el sistema con los datos semilla esenciales (sucursales, usuarios por defecto, roles, clientes y productos base) para garantizar la disponibilidad inmediata de los servicios.

@@ -12,4 +12,10 @@ export interface ItemCarrito {
 
   /** Cantidad solicitada de dicho producto */
   cantidad: number;
+
+  /** Tamaño seleccionado del producto para el carrito */
+  tamanoSeleccionado?: 'grande' | 'familiar' | 'jumbo';
+
+  /** Precio unitario final calculado según el tamaño seleccionado */
+  precioUnitario?: number;
 }

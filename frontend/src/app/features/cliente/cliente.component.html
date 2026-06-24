@@ -155,75 +155,70 @@
         </span>
     </div>
 
-    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <!-- PRODUCTO DINÁMICO -->
-        <div *ngFor="let producto of productosPaginados()" class="product-card bg-white rounded-[30px] shadow-lg overflow-hidden border border-gray-50 flex flex-col">
-            <img [src]="producto.imagenUrl" class="h-60 w-full object-cover" [alt]="producto.nombre">
+    <!-- Carrusel de Productos -->
+    <div class="relative px-4" *ngIf="productosFiltrados().length > 0">
+        <!-- Botón Anterior -->
+        <button 
+            type="button" 
+            (click)="carruselProductos.scrollLeft = carruselProductos.scrollLeft - 320"
+            class="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center font-bold text-[#d6254d] hover:bg-[#fdeba9] cursor-pointer transition-all hover:scale-110"
+            aria-label="Anterior producto">
+            &lt;
+        </button>
 
-            <div class="p-6 flex-1 flex flex-col justify-between">
-                <div>
-                    <h3 class="font-bold text-2xl text-gray-800">
-                        {{ producto.nombre }}
-                    </h3>
+        <div #carruselProductos class="contenedor-carrusel">
+            <!-- PRODUCTO DINÁMICO -->
+            <div *ngFor="let producto of productosFiltrados()" class="product-card item-carrusel bg-white rounded-[30px] shadow-lg overflow-hidden border border-gray-50 flex flex-col">
+                <img [src]="obtenerImagenProducto(producto)" class="h-60 w-full object-cover" [alt]="producto.nombre">
+                <div class="p-6 flex-1 flex flex-col justify-between">
+                    <div>
+                        <div class="flex gap-2 mb-2 flex-wrap">
+                            <span class="bg-[#fdeba9] text-[#d6254d] px-2.5 py-0.5 rounded-full text-xs font-bold uppercase">
+                                {{ producto.categoria }}
+                            </span>
+                            <span class="bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded-full text-xs font-bold capitalize">
+                                {{ producto.tamano }}
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-2xl text-gray-800">
+                            {{ producto.nombre }}
+                        </h3>
 
-                    <p class="text-gray-500 mt-2 text-sm">
-                        {{ producto.ingredientes }}
-                    </p>
-                </div>
+                        <p class="text-gray-500 mt-2 text-sm">
+                            {{ producto.ingredientes }}
+                        </p>
+                    </div>
 
-                <div class="flex justify-between items-center mt-6">
-                    <span class="font-bold text-3xl text-[#d6254d]">
-                        ${{ producto.precio }}.00
-                    </span>
+                    <div class="flex justify-between items-center mt-6">
+                        <span class="font-bold text-3xl text-[#d6254d]">
+                            ${{ producto.precio }}
+                        </span>
 
-                    <button 
-                        (click)="agregarAlCarrito(producto)"
-                        class="bg-[#d6254d] hover:bg-[#ff5475] text-white w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors cursor-pointer text-xl">
-                        +
-                    </button>
+                        <button 
+                            (click)="agregarAlCarrito(producto)"
+                            class="bg-[#d6254d] hover:bg-[#ff5475] text-white w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors cursor-pointer text-xl">
+                            +
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Botón Siguiente -->
+        <button 
+            type="button" 
+            (click)="carruselProductos.scrollLeft = carruselProductos.scrollLeft + 320"
+            class="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center font-bold text-[#d6254d] hover:bg-[#fdeba9] cursor-pointer transition-all hover:scale-110"
+            aria-label="Siguiente producto">
+            &gt;
+        </button>
     </div>
 
-    <!-- Paginación de Productos -->
-    <div class="mt-12 flex justify-between items-center flex-wrap gap-6" *ngIf="totalPaginasMenu() > 1">
-        <span class="text-sm text-gray-500 font-semibold">
-            Mostrando página {{ paginaActual() }} de {{ totalPaginasMenu() }}
-        </span>
-        
-        <div class="flex gap-2 items-center">
-            <!-- Botón Anterior -->
-            <button 
-                class="w-10 h-10 rounded-xl border border-[#d6254d]/20 bg-white text-gray-700 font-bold flex items-center justify-center transition-all hover:bg-[#d6254d] hover:text-white cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" 
-                (click)="cambiarPaginaMenu(paginaActual() - 1)" 
-                [disabled]="paginaActual() === 1">
-                &laquo;
-            </button>
-
-            <!-- Números de Página -->
-            <button 
-                *ngFor="let pag of obtenerListaPaginasMenu()" 
-                class="w-10 h-10 rounded-xl border font-bold flex items-center justify-center transition-all cursor-pointer"
-                [class.bg-[#d6254d]]="paginaActual() === pag"
-                [class.text-white]="paginaActual() === pag"
-                [class.border-[#d6254d]]="paginaActual() === pag"
-                [class.bg-white]="paginaActual() !== pag"
-                [class.text-gray-700]="paginaActual() !== pag"
-                [class.border-[#d6254d]/20]="paginaActual() !== pag"
-                [class.hover:bg-[#fdeba9]]="paginaActual() !== pag"
-                (click)="cambiarPaginaMenu(pag)">
-                {{ pag }}
-            </button>
-
-            <!-- Botón Siguiente -->
-            <button 
-                class="w-10 h-10 rounded-xl border border-[#d6254d]/20 bg-white text-gray-700 font-bold flex items-center justify-center transition-all hover:bg-[#d6254d] hover:text-white cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" 
-                (click)="cambiarPaginaMenu(paginaActual() + 1)" 
-                [disabled]="paginaActual() === totalPaginasMenu()">
-                &raquo;
-            </button>
-        </div>
+    <!-- Explorar menú completo -->
+    <div class="mt-10 text-center">
+        <a routerLink="/menu" class="inline-block bg-[#ff9036] hover:bg-[#d6254d] text-white px-8 py-4 rounded-full font-bold shadow-lg transition-all no-underline hover:scale-105">
+            Explorar Menú Completo
+        </a>
     </div>
 
     <!-- Si no hay productos -->
@@ -285,10 +280,16 @@
                     class="bg-[#ff9036] hover:bg-[#fdeba9] hover:text-gray-800 text-white px-4 py-2 rounded-full font-bold shadow-md transition-all cursor-pointer text-xs flex items-center gap-1.5 hover:scale-[1.02]">
                     Descargar Pedido XML
                 </button>
-                <button type="button" (click)="reenviarCorreoPedido(pedidoActivo())"
-                    class="bg-[#f6d76b] hover:bg-[#ff9036] text-gray-800 px-4 py-2 rounded-full font-bold shadow-md transition-all cursor-pointer text-xs flex items-center gap-1.5 hover:scale-[1.02]">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                    Reenviar Correo
+                <button type="button" (click)="reenviarCorreoPedido(pedidoActivo())" [disabled]="enviandoCorreo()"
+                    class="bg-[#f6d76b] hover:bg-[#ff9036] text-gray-800 px-4 py-2 rounded-full font-bold shadow-md transition-all cursor-pointer text-xs flex items-center gap-1.5 hover:scale-[1.02] disabled:opacity-50">
+                    <ng-container *ngIf="enviandoCorreo()">
+                        <span class="spinner-cargador" style="width: 14px; height: 14px; border-width: 2px; border-left-color: #221B1C; border-top-color: rgba(0,0,0,0.1); border-right-color: rgba(0,0,0,0.1); border-bottom-color: rgba(0,0,0,0.1);"></span>
+                        <span>Enviando...</span>
+                    </ng-container>
+                    <ng-container *ngIf="!enviandoCorreo()">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        <span>Reenviar Correo</span>
+                    </ng-container>
                 </button>
             </div>
         </div>
@@ -381,10 +382,21 @@
         <div class="modal-cuerpo">
             <div *ngFor="let item of carrito()" class="item-carrito-fila">
                 <div class="item-carrito-info">
-                    <img [src]="item.producto.imagenUrl" class="item-carrito-imagen" [alt]="item.producto.nombre">
+                    <img [src]="obtenerImagenProducto(item.producto)" class="item-carrito-imagen" [alt]="item.producto.nombre">
                     <div class="item-carrito-detalles">
                         <h4>{{ item.producto.nombre }}</h4>
-                        <p>${{ item.producto.precio }}.00 c/u</p>
+                        <p class="text-[#d6254d] font-bold">${{ item.precioUnitario ?? item.producto.precio }} c/u</p>
+                        <!-- Selección de Tamaño (Pizzas) -->
+                        <div *ngIf="item.producto.categoria === 'pizza'" class="mt-1">
+                            <select 
+                                [value]="item.tamanoSeleccionado || 'grande'" 
+                                (change)="actualizarTamano(item.producto.id, $event)"
+                                class="text-xs border border-gray-200 rounded px-1.5 py-0.5 outline-none bg-white text-gray-700 font-semibold cursor-pointer">
+                                <option value="grande">Grande</option>
+                                <option value="familiar">Familiar (+$50)</option>
+                                <option value="jumbo">Jumbo (+$100)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -520,7 +532,7 @@
                     <div class="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden bg-white">
                         <div *ngFor="let item of pedidoSeleccionado()?.productos" class="p-4 flex items-center justify-between">
                             <div class="flex items-center gap-3">
-                                <img [src]="item.producto.imagenUrl" class="w-12 h-12 rounded-xl object-cover" [alt]="item.producto.nombre">
+                                <img [src]="obtenerImagenProducto(item.producto)" class="w-12 h-12 rounded-xl object-cover" [alt]="item.producto.nombre">
                                 <div>
                                     <h5 class="font-extrabold text-gray-900">{{ item.producto.nombre }}</h5>
                                     <p class="text-xs text-gray-400">{{ item.producto.tamano }} &bull; ${{ item.producto.precio }}.00 c/u</p>
@@ -556,10 +568,16 @@
                     class="bg-[#ff9036] hover:bg-[#fdeba9] hover:text-gray-800 text-white px-4 py-2.5 rounded-full font-bold shadow-md transition-all cursor-pointer text-xs flex items-center gap-1.5 hover:scale-[1.02]">
                     Descargar XML
                 </button>
-                <button type="button" (click)="reenviarCorreoPedido(pedidoSeleccionado())"
-                    class="bg-[#f6d76b] hover:bg-[#ff9036] text-gray-800 px-4 py-2.5 rounded-full font-bold shadow-md transition-all cursor-pointer text-xs flex items-center gap-1.5 hover:scale-[1.02]">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                    Reenviar Correo
+                <button type="button" (click)="reenviarCorreoPedido(pedidoSeleccionado())" [disabled]="enviandoCorreo()"
+                    class="bg-[#f6d76b] hover:bg-[#ff9036] text-gray-800 px-4 py-2.5 rounded-full font-bold shadow-md transition-all cursor-pointer text-xs flex items-center gap-1.5 hover:scale-[1.02] disabled:opacity-50">
+                    <ng-container *ngIf="enviandoCorreo()">
+                        <span class="spinner-cargador" style="width: 14px; height: 14px; border-width: 2px; border-left-color: #221B1C; border-top-color: rgba(0,0,0,0.1); border-right-color: rgba(0,0,0,0.1); border-bottom-color: rgba(0,0,0,0.1);"></span>
+                        <span>Enviando...</span>
+                    </ng-container>
+                    <ng-container *ngIf="!enviandoCorreo()">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        <span>Reenviar Correo</span>
+                    </ng-container>
                 </button>
             </div>
 

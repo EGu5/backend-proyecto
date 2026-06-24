@@ -249,4 +249,29 @@
     border-color: rgba(214, 37, 77, 0.3) !important;
 }
 
+/* Carrusel de Productos */
+.contenedor-carrusel {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    gap: 2rem;
+    padding: 1.5rem 0.5rem;
+    scrollbar-width: none; /* Firefox */
+}
+
+.contenedor-carrusel::-webkit-scrollbar {
+    display: none; /* Chrome, Safari y Opera */
+}
+
+.item-carrusel {
+    flex: 0 0 280px;
+}
+
+@media (min-width: 768px) {
+    .item-carrusel {
+        flex: 0 0 310px;
+    }
+}
+
+
 

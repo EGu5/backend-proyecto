@@ -4,25 +4,29 @@ require('dotenv').config();
 
 /**
  * Configuración del pool de conexiones para la base de datos MySQL.
- * Configurado utilizando variables de entorno.
+ * Configurado utilizando variables de entorno y soporte para cifrado SSL.
  */
 const configuracionPool = {
   host: process.env.BD_HOST,
   user: process.env.BD_USUARIO,
   password: process.env.BD_CONTRASENA,
   database: process.env.BD_NOMBRE,
-  port: parseInt(process.env.BD_PUERTO, 10),
+  port: parseInt(process.env.BD_PUERTO || '3306', 10),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   enableKeepAlive: true,
-  keepAliveInitialDelay: 0
+  keepAliveInitialDelay: 0,
+  ssl: process.env.BD_SSL === 'true' ? { rejectUnauthorized: false } : undefined
 };
 
 /**
  * Pool de conexiones para la base de datos MySQL.
+ * Se adapta automáticamente si se le pasa una URL completa de conexión (común en Render) o parámetros individuales.
  */
-const pool = mysql.createPool(configuracionPool);
+const pool = process.env.DATABASE_URL
+  ? mysql.createPool(process.env.DATABASE_URL)
+  : mysql.createPool(configuracionPool);
 
 /**
  * Verifica la conexión activa con el servidor de la base de datos MySQL.

@@ -25,8 +25,12 @@ export class CarritoService {
    * Intención: Calcular el monto total a pagar por los artículos dentro del carrito.
    * Retorno: number - Total de pesos mexicanos acumulados.
    */
+  /**
+   * Intención: Calcular el monto total a pagar por los artículos dentro del carrito.
+   * Retorno: number - Total de pesos mexicanos acumulados.
+   */
   totalPagar = computed(() => {
-    return this.carrito().reduce((acumulado, item) => acumulado + (item.producto.precio * item.cantidad), 0);
+    return this.carrito().reduce((acumulado, item) => acumulado + ((item.precioUnitario ?? item.producto.precio) * item.cantidad), 0);
   });
 
   /**
@@ -45,7 +49,41 @@ export class CarritoService {
       itemExistente.cantidad += 1;
       this.carrito.set(items);
     } else {
-      this.carrito.set([...items, { producto, cantidad: 1 }]);
+      this.carrito.set([...items, { 
+        producto, 
+        cantidad: 1, 
+        tamanoSeleccionado: 'grande', 
+        precioUnitario: Number(producto.precio)
+      }]);
+    }
+  }
+
+  /**
+   * Intención: Actualizar el tamaño seleccionado de un producto y recalcular su precio unitario en base a la configuración.
+   * Parámetros:
+   *   - productoId (number): El identificador único del producto.
+   *   - nuevoTamano ('grande' | 'familiar' | 'jumbo'): El nuevo tamaño elegido.
+   * Retorno: void.
+   * Casos límite:
+   *   - Si el producto no existe en el carrito, no realiza ninguna acción.
+   */
+  actualizarTamano(productoId: number, nuevoTamano: 'grande' | 'familiar' | 'jumbo'): void {
+    const items = [...this.carrito()];
+    const item = items.find(i => i.producto.id === productoId);
+    if (item) {
+      item.tamanoSeleccionado = nuevoTamano;
+      
+      // La regla de precios configurada para los tamaños es:
+      // Grande: precio base, Familiar: precio base + $50, Jumbo: precio base + $100
+      let incremento = 0;
+      if (nuevoTamano === 'familiar') {
+        incremento = 50;
+      } else if (nuevoTamano === 'jumbo') {
+        incremento = 100;
+      }
+      
+      item.precioUnitario = Number(item.producto.precio) + incremento;
+      this.carrito.set(items);
     }
   }
 

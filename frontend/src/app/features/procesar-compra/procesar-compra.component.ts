@@ -60,6 +60,12 @@ export class ProcesarCompraComponent implements OnInit {
   /** Signal para mostrar una alerta de éxito simulada antes de redirigir. */
   mensajeExito = signal<string>('');
 
+  /**
+   * Signal para controlar el estado del proceso de pago.
+   * Evita transacciones duplicadas por doble clic e indica cuándo mostrar la animación de carga.
+   */
+  procesandoPago = signal<boolean>(false);
+
   /** Referencia del mapa de Google */
   mapa: any = null;
 
@@ -354,9 +360,18 @@ export class ProcesarCompraComponent implements OnInit {
   /**
    * Procesa y confirma la orden de compra.
    * Intención: Validar los campos de entrega y pago, generar el pedido en preparación e iniciar la simulación.
+   *           Implementa protección contra doble clic / doble pago desactivando el control y mostrando un loader.
+   * Parámetros: Ninguno.
    * Retorno: void.
+   * Casos límite (edge cases):
+   *   - Si ya está procesando una orden (this.procesandoPago() === true), retorna inmediatamente para evitar cobros dobles.
+   *   - Si el carrito está vacío o faltan datos obligatorios, muestra la alerta correspondiente y restaura el estado.
    */
   procesarOrden(): void {
+    if (this.procesandoPago()) {
+      return;
+    }
+
     this.alertaActual.set(null);
 
     // Validar carrito vacío
@@ -418,49 +433,57 @@ export class ProcesarCompraComponent implements OnInit {
       }
     }
 
-    // Si todo está correcto, registrar el pedido en el servicio centralizado
-    this.pedidoService.crearPedido(
-      this.elementosCarrito(),
-      this.metodoEntrega(),
-      direccionCompleta,
-      this.telefonoCliente().trim(),
-      this.metodoPago()
-    );
+    // Activar bandera de procesamiento de pago
+    this.procesandoPago.set(true);
 
-    // Si solicitó factura, emitirla automáticamente en el servicio centralizado
-    if (this.solicitarFactura()) {
-      const pedidoCreado = this.pedidoService.pedidoActivo();
-      const pedidoId = pedidoCreado ? pedidoCreado.id : '#' + Math.floor(1000 + Math.random() * 9000);
-      const folio = 'FAC-' + Math.floor(1000 + Math.random() * 9000);
-      const uuidFicticio = '7A94C1D4-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-4EBA-A211-' + Math.random().toString(36).substring(2, 14).toUpperCase();
-      const fechaActualStr = new Date().toLocaleString('es-MX', { hour12: false }).substring(0, 17);
-
-      const nuevaFactura = {
-        id: folio,
-        fechaHora: fechaActualStr,
-        pedidoId: pedidoId,
-        rfc: this.rfcFactura().toUpperCase(),
-        razonSocial: this.razonSocialFactura().trim(),
-        codigoPostal: this.codigoPostalFactura().trim(),
-        usoCfdi: this.usoCfdiFactura(),
-        regimenFiscal: '601 - General de Ley Personas Morales',
-        correo: 'facturas@pizza.com',
-        total: this.totalFinal(),
-        estado: 'Emitida' as const,
-        uuid: uuidFicticio
-      };
-
-      const lista = this.pedidoService.listaFacturas();
-      this.pedidoService.listaFacturas.set([nuevaFactura, ...lista]);
-    }
-
-    // Limpiar carrito
-    this.carritoService.limpiarCarrito();
-
-    // Mostrar éxito y redirigir
-    this.mensajeExito.set('¡Compra procesada con éxito! Redirigiendo a tu pedido activo...');
+    // Simular un retraso en la pasarela de pago para dar tiempo a la animación (2 segundos)
     setTimeout(() => {
-      this.router.navigate(['/cliente']);
-    }, 1500);
+      // Registrar el pedido en el servicio centralizado
+      this.pedidoService.crearPedido(
+        this.elementosCarrito(),
+        this.metodoEntrega(),
+        direccionCompleta,
+        this.telefonoCliente().trim(),
+        this.metodoPago()
+      );
+
+      // Si solicitó factura, emitirla automáticamente en el servicio centralizado
+      if (this.solicitarFactura()) {
+        const pedidoCreado = this.pedidoService.pedidoActivo();
+        const pedidoId = pedidoCreado ? pedidoCreado.id : '#' + Math.floor(1000 + Math.random() * 9000);
+        const folio = 'FAC-' + Math.floor(1000 + Math.random() * 9000);
+        const uuidFicticio = '7A94C1D4-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-4EBA-A211-' + Math.random().toString(36).substring(2, 14).toUpperCase();
+        const fechaActualStr = new Date().toLocaleString('es-MX', { hour12: false }).substring(0, 17);
+
+        const nuevaFactura = {
+          id: folio,
+          fechaHora: fechaActualStr,
+          pedidoId: pedidoId,
+          rfc: this.rfcFactura().toUpperCase(),
+          razonSocial: this.razonSocialFactura().trim(),
+          codigoPostal: this.codigoPostalFactura().trim(),
+          usoCfdi: this.usoCfdiFactura(),
+          regimenFiscal: '601 - General de Ley Personas Morales',
+          correo: 'facturas@pizza.com',
+          total: this.totalFinal(),
+          estado: 'Emitida' as const,
+          uuid: uuidFicticio
+        };
+
+        const lista = this.pedidoService.listaFacturas();
+        this.pedidoService.listaFacturas.set([nuevaFactura, ...lista]);
+      }
+
+      // Limpiar carrito
+      this.carritoService.limpiarCarrito();
+
+      // Desactivar spinner de carga y mostrar éxito
+      this.procesandoPago.set(false);
+      this.mensajeExito.set('¡Compra procesada con éxito! Redirigiendo a tu pedido activo...');
+      
+      setTimeout(() => {
+        this.router.navigate(['/cliente']);
+      }, 1500);
+    }, 2000);
   }
 }

@@ -59,6 +59,9 @@ export class ClienteComponent implements OnInit, OnDestroy {
   /** Historial completo de pedidos del cliente */
   historialPedidos = computed(() => this.pedidoService.historialPedidos());
 
+  /** Signal para controlar la animación de carga al enviar/reenviar correos de confirmación */
+  enviandoCorreo = signal<boolean>(false);
+
   /**
    * Constructor del componente cliente.
    * Intención: Inyectar dependencias de servicios y rutas.
@@ -388,18 +391,82 @@ export class ClienteComponent implements OnInit, OnDestroy {
 
   /**
    * Intención: Solicitar el reenvío del correo de confirmación de un pedido.
+   *           Implementa protección contra doble clic mostrando un estado de carga.
    * Parámetros:
    *   - pedido (any): El pedido del cual se reenviará el correo.
    * Retorno: void.
+   * Casos límite (edge cases):
+   *   - Si ya está enviando un correo, aborta la operación para evitar peticiones duplicadas.
    */
   reenviarCorreoPedido(pedido: any): void {
-    if (!pedido) return;
-    this.pedidoService.reenviarCorreoPedido(pedido.id).subscribe(exito => {
-      if (exito) {
-        this.alertasService.lanzarNotificacion(`¡Correo de confirmación reenviado con éxito para el pedido ${pedido.id}!`, 'aceptado');
-      } else {
-        this.alertasService.lanzarNotificacion(`No se pudo enviar el correo del pedido ${pedido.id}. Por favor, intenta de nuevo.`, 'error');
-      }
-    });
+    if (!pedido || this.enviandoCorreo()) return;
+    
+    this.enviandoCorreo.set(true);
+    
+    // Simular un tiempo mínimo de procesamiento de 1.5s para la animación
+    setTimeout(() => {
+      this.pedidoService.reenviarCorreoPedido(pedido.id).subscribe({
+        next: exito => {
+          this.enviandoCorreo.set(false);
+          if (exito) {
+            this.alertasService.lanzarNotificacion(`¡Correo de confirmación reenviado con éxito para el pedido ${pedido.id}!`, 'aceptado');
+          } else {
+            this.alertasService.lanzarNotificacion(`No se pudo enviar el correo del pedido ${pedido.id}. Por favor, intenta de nuevo.`, 'error');
+          }
+        },
+        error: () => {
+          this.enviandoCorreo.set(false);
+          this.alertasService.lanzarNotificacion(`No se pudo enviar el correo del pedido ${pedido.id}. Por favor, intenta de nuevo.`, 'error');
+        }
+      });
+    }, 1500);
+  }
+
+  /**
+   * Intención: Retornar una URL de imagen relacionada o de respaldo basada en el nombre o categoría.
+   * Parámetros:
+   *   - producto (Producto): El producto a evaluar.
+   * Retorno: string - URL final de la imagen.
+   * Casos límite: Si el producto es nulo, retorna imagen genérica.
+   */
+  obtenerImagenProducto(producto: any): string {
+    if (!producto) {
+      return 'https://images.unsplash.com/photo-1513104890138-7c749659a591';
+    }
+    if (producto.imagenUrl && producto.imagenUrl.trim() !== '' && !producto.imagenUrl.includes('broken') && producto.imagenUrl.startsWith('http')) {
+      return producto.imagenUrl;
+    }
+    const nombre = (producto.nombre || '').toLowerCase();
+    const categoria = (producto.categoria || '').toLowerCase();
+
+    if (nombre.includes('pepperoni')) {
+      return 'https://images.unsplash.com/photo-1628840042765-356cda07504e';
+    } else if (nombre.includes('hawaiana')) {
+      return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38';
+    } else if (nombre.includes('mexicana')) {
+      return 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002';
+    } else if (nombre.includes('queso') || nombre.includes('cuatro')) {
+      return 'https://images.unsplash.com/photo-1548365328-9f547fb0953b';
+    } else if (nombre.includes('tiramis') || nombre.includes('postre') || categoria === 'postre') {
+      return 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9';
+    } else if (categoria === 'bebida' || nombre.includes('refresco') || nombre.includes('coca') || nombre.includes('agua')) {
+      return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97';
+    }
+    
+    return 'https://images.unsplash.com/photo-1513104890138-7c749659a591';
+  }
+
+  /**
+   * Intención: Delegar al servicio la actualización del tamaño de un producto en el carrito.
+   * Parámetros:
+   *   - productoId (number): El identificador único del producto.
+   *   - evento (any): El evento change del select en el DOM.
+   * Retorno: void.
+   * Casos límite: Si el evento o target son nulos, no realiza ninguna acción.
+   */
+  actualizarTamano(productoId: number, evento: any): void {
+    if (!evento || !evento.target) return;
+    const valor = evento.target.value as 'grande' | 'familiar' | 'jumbo';
+    this.carritoService.actualizarTamano(productoId, valor);
   }
 }

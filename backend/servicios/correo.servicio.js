@@ -3,70 +3,40 @@ const registrador = require('../utilidades/registrador.utilidad');
 require('dotenv').config();
 
 // Desestructurar variables de configuración SMTP del entorno
-const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, URL_FRONTEND } = process.env;
+
+if (!URL_FRONTEND) {
+  registrador.warn('La variable de entorno URL_FRONTEND no está configurada.');
+}
+const urlFrontendBase = URL_FRONTEND || 'https://pizza-pizza-frontend.onrender.com';
 
 /**
  * Instancia o configura el transportador de nodemailer según los parámetros definidos en el entorno.
- * Si existen credenciales SMTP reales, intenta verificarlas. Si fallan las credenciales,
- * degrada automáticamente hacia Ethereal Mail o simulación por consola para no interrumpir las pruebas.
+ * Exige de forma estricta credenciales SMTP reales para producción y no realiza simulaciones.
  * 
- * Intención: Obtener un canal de envío de correos resistente a fallos de red o credenciales inválidas.
+ * Intención: Obtener un canal de envío de correos de producción real.
  * Parámetros: Ninguno.
  * Retorno: {Promise<Object>} Transportador de nodemailer configurado.
+ * Casos límite (edge cases):
+ *   - Lanza un error si la configuración SMTP no está definida en el entorno.
  */
 async function obtenerTransportador() {
-  // 1. Si las variables SMTP están configuradas, intentar usar el SMTP real
-  if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
-    try {
-      const transportadorReal = nodemailer.createTransport({
-        host: SMTP_HOST,
-        port: parseInt(SMTP_PORT, 10),
-        secure: parseInt(SMTP_PORT, 10) === 465,
-        auth: {
-          user: SMTP_USER,
-          pass: SMTP_PASS
-        }
-      });
-      
-      // Probar conexión real de forma rápida (tiempo límite de 3 segundos)
-      await Promise.race([
-        transportadorReal.verify(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera de conexión SMTP agotado.')), 3000))
-      ]);
-      
-      return transportadorReal;
-    } catch (error) {
-      registrador.warn(`Las credenciales del SMTP real fallaron (${error.message}). Se usará el entorno de pruebas.`);
-    }
+  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
+    throw new Error('Configuración de correo SMTP incompleta en producción. Se requieren SMTP_HOST, SMTP_PORT, SMTP_USER y SMTP_PASS.');
   }
 
-  // 2. Si falla el SMTP real o no está configurado, intentar usar Ethereal Mail
-  try {
-    const cuentaPrueba = await nodemailer.createTestAccount();
-    return nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: cuentaPrueba.user,
-        pass: cuentaPrueba.pass
-      }
-    });
-  } catch (error) {
-    // 3. Si falla la red, retornar transportador simulado en consola
-    registrador.warn('Servicio de SMTP o Ethereal no disponible. Se simulará el correo por terminal.');
-    return {
-      sendMail: async (opciones) => {
-        registrador.info(`[SIMULACIÓN CORREO ENVIADO]:
-          Para: ${opciones.to}
-          Asunto: ${opciones.subject}
-          Mensaje HTML:
-          ${opciones.html}
-        `);
-        return { messageId: 'simulado-id', testMessageUrl: false };
-      }
-    };
-  }
+  const transportadorReal = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: parseInt(SMTP_PORT, 10),
+    secure: parseInt(SMTP_PORT, 10) === 465,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS
+    },
+    name: 'pizza-pizza-backend' // Identificador EHLO para que Google/Gmail reconozca el origen del host en Render
+  });
+
+  return transportadorReal;
 }
 
 /**
@@ -97,7 +67,7 @@ class CorreoServicio {
             <p>Gracias por unirte a nuestra comunidad gourmet. Tu cuenta ha sido creada exitosamente en nuestro sistema.</p>
             <p>A partir de este momento puedes acceder a nuestra tienda, realizar pedidos de nuestras especialidades culinarias y darles seguimiento en tiempo real.</p>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="http://localhost:4200/login" style="background-color: #d6254d; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              <a href="${urlFrontendBase}/login" style="background-color: #d6254d; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
                 Acceder a mi Cuenta
               </a>
             </div>
@@ -340,18 +310,12 @@ class CorreoServicio {
   static async verificarConexion() {
     try {
       const transportador = await obtenerTransportador();
-      // Si es el mock de consola, no requiere verificar
-      if (typeof transportador.verify !== 'function') {
-        registrador.info('Servicio de correo: Listo en modo de simulación de consola.');
-        return true;
-      }
       await transportador.verify();
       registrador.info('Servicio de correo: Conexión y credenciales con el servidor SMTP verificadas correctamente.');
       return true;
     } catch (error) {
-      // Registrar error pero retornar true para permitir que las pruebas en desarrollo continúen usando Ethereal/Consola
-      registrador.warn('Servicio de correo: Fallo en SMTP real. La aplicación usará transportador de respaldo (Ethereal/Consola).');
-      return true;
+      registrador.error('[pizza pizza backend] Servicio de correo: Error crítico de conexión SMTP en producción.', { mensaje: error.message });
+      throw error;
     }
   }
 }

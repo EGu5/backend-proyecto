@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const UsuarioModelo = require('../modelos/usuario.modelo');
 const CorreoServicio = require('./correo.servicio');
 const { 
@@ -47,6 +48,21 @@ class AutenticacionServicio {
       usuario.direccion = desencriptarTexto(usuario.direccion);
     }
 
+    // Firmar token JWT con vigencia de 1 día (1d) e identificador único (jti) para proteger recursos
+    const SECRETO = process.env.JWT_SECRETO || 'clave_secreta_super_segura_para_el_proyecto_pizza_pizza';
+    const identificadorToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const token = jwt.sign(
+      { 
+        idUsuario: usuario.id, 
+        correo: usuario.correo, 
+        rol: usuario.rol,
+        jti: identificadorToken
+      },
+      SECRETO,
+      { expiresIn: '1d' }
+    );
+    usuario.token = token;
+
     return usuario;
   }
 
@@ -94,6 +110,22 @@ class AutenticacionServicio {
 
     // Desencriptar el correo antes de retornarlo
     resultado.correo = desencriptarCorreo(resultado.correo);
+
+    // Firmar token JWT con vigencia de 1 día (1d) e identificador único (jti) para proteger recursos
+    const SECRETO = process.env.JWT_SECRETO || 'clave_secreta_super_segura_para_el_proyecto_pizza_pizza';
+    const identificadorToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const token = jwt.sign(
+      { 
+        idUsuario: resultado.id, 
+        correo: resultado.correo, 
+        rol: resultado.rol,
+        jti: identificadorToken
+      },
+      SECRETO,
+      { expiresIn: '1d' }
+    );
+    resultado.token = token;
+
     return resultado;
   }
 }

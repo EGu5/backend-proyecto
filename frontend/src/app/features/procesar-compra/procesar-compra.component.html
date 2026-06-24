@@ -272,8 +272,12 @@
                             <a routerLink="/cliente" class="btn-cancelar" id="btn-checkout-cancelar">
                                 Volver al Panel
                             </a>
-                            <button type="submit" class="btn-pagar" id="btn-checkout-confirmar" [disabled]="elementosCarrito().length === 0">
-                                Confirmar y Pagar
+                            <button type="submit" class="btn-pagar flex items-center justify-center gap-2" id="btn-checkout-confirmar" [disabled]="elementosCarrito().length === 0 || procesandoPago()">
+                                <ng-container *ngIf="procesandoPago()">
+                                    <span class="spinner-cargador" style="width: 20px; height: 20px; border-width: 3px; border-left-color: white; border-top-color: rgba(255,255,255,0.3); border-right-color: rgba(255,255,255,0.3); border-bottom-color: rgba(255,255,255,0.3);"></span>
+                                    <span>Procesando Pago...</span>
+                                </ng-container>
+                                <span *ngIf="!procesandoPago()">Confirmar y Pagar</span>
                             </button>
                         </div>
                     </div>
@@ -288,10 +292,15 @@
                     <div class="space-y-4 max-h-[350px] overflow-y-auto pr-2">
                         <div *ngFor="let item of elementosCarrito()" class="item-resumen">
                             <div>
-                                <p class="item-nombre">{{ item.producto.nombre }}</p>
+                                <p class="item-nombre">
+                                    {{ item.producto.nombre }} 
+                                    <span *ngIf="item.producto.categoria === 'pizza'" class="text-xs text-gray-400 capitalize">
+                                        ({{ item.tamanoSeleccionado || 'grande' }})
+                                    </span>
+                                </p>
                                 <p class="item-cantidad">Cantidad: {{ item.cantidad }}</p>
                             </div>
-                            <p class="item-precio">${{ item.producto.precio * item.cantidad }}.00</p>
+                            <p class="item-precio">${{ (item.precioUnitario ?? item.producto.precio) * item.cantidad }}</p>
                         </div>
                         <div *ngIf="elementosCarrito().length === 0" class="text-center py-8 text-gray-400 text-sm">
                             No hay productos en el carrito.

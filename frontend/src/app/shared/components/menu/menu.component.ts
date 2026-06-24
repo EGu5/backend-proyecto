@@ -1,8 +1,10 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { Producto } from '../../../core/models/producto.model';
 import { ProductosService } from '../../../core/services/productos.service';
+import { CarritoService } from '../../../core/services/carrito.service';
+import { AlertasService } from '../../../core/services/alertas.service';
 
 /**
  * Componente que gestiona la vista exclusiva del menú de pizzas, bebidas y postres.
@@ -28,12 +30,32 @@ export class MenuComponent implements OnInit {
   /** Cantidad de productos a mostrar por página */
   elementosPorPagina = signal<number>(55); // Ajustable según necesidad de visualización
 
+  /** Estado de visibilidad del modal del carrito */
+  modalAbierto = signal<boolean>(false);
+
+  /** Carrito de compras interactivo (vinculado al servicio global) */
+  carrito = computed(() => this.carritoService.carrito());
+
+  /** Cantidad total de artículos agregados en el carrito */
+  totalElementosCarrito = computed(() => this.carritoService.totalElementos());
+
+  /** Monto total a pagar por los artículos en el carrito */
+  totalPagarCarrito = computed(() => this.carritoService.totalPagar());
+
   /**
    * Intención: Constructor por defecto del componente.
    * Parámetros:
    *   - productosService (ProductosService): Servicio para consultar productos de la base de datos real.
+   *   - carritoService (CarritoService): Servicio global del carrito de compras.
+   *   - alertasService (AlertasService): Servicio centralizado de alertas del sistema.
+   *   - router (Router): Servicio de enrutamiento de Angular.
    */
-  constructor(private productosService: ProductosService) { }
+  constructor(
+    private productosService: ProductosService,
+    private carritoService: CarritoService,
+    private alertasService: AlertasService,
+    private router: Router
+  ) { }
 
   /**
    * Intención: Inicializar el componente con datos de la base de datos de calidad premium.
@@ -130,4 +152,136 @@ export class MenuComponent implements OnInit {
     }
     return paginas;
   });
+
+  /**
+   * Intención: Agregar un producto seleccionado al carrito de compras y notificar al usuario.
+   * Parámetros:
+   *   - producto (Producto): El producto a agregar al carrito.
+   * Retorno: void.
+   * Casos límite:
+   *   - Si el producto es nulo, no realiza ninguna acción.
+   */
+  agregarAlCarrito(producto: Producto): void {
+    if (!producto) return;
+    this.carritoService.agregarProducto(producto);
+    this.alertasService.lanzarNotificacion(
+      `Se agregó ${producto.nombre} al carrito de compras de forma exitosa.`,
+      'aceptado'
+    );
+  }
+
+  /**
+   * Intención: Abrir el modal de carrito de compras si contiene elementos.
+   * Parámetros: Ninguno.
+   * Retorno: void.
+   * Casos límite: Ninguno.
+   */
+  abrirModalCarrito(): void {
+    if (this.totalElementosCarrito() > 0) {
+      this.modalAbierto.set(true);
+    }
+  }
+
+  /**
+   * Intención: Cerrar el modal del carrito de compras.
+   * Parámetros: Ninguno.
+   * Retorno: void.
+   * Casos límite: Ninguno.
+   */
+  cerrarModalCarrito(): void {
+    this.modalAbierto.set(false);
+  }
+
+  /**
+   * Intención: Incrementar la cantidad de un producto específico en el carrito.
+   * Parámetros:
+   *   - productoId (number): El identificador del producto.
+   * Retorno: void.
+   * Casos límite: Ninguno.
+   */
+  incrementarCantidad(productoId: number): void {
+    this.carritoService.incrementarCantidad(productoId);
+  }
+
+  /**
+   * Intención: Decrementar la cantidad de un producto específico en el carrito.
+   * Parámetros:
+   *   - productoId (number): El identificador del producto.
+   * Retorno: void.
+   * Casos límite: Si llega a 1, la siguiente llamada remueve el elemento.
+   */
+  decrementarCantidad(productoId: number): void {
+    this.carritoService.decrementarCantidad(productoId);
+  }
+
+  /**
+   * Intención: Eliminar un producto del carrito.
+   * Parámetros:
+   *   - productoId (number): Identificador del producto a eliminar.
+   * Retorno: void.
+   * Casos límite: Ninguno.
+   */
+  eliminarDelCarrito(productoId: number): void {
+    this.carritoService.eliminarDelCarrito(productoId);
+  }
+
+  /**
+   * Intención: Confirmar la compra y redirigir al proceso de checkout.
+   * Parámetros: Ninguno.
+   * Retorno: void.
+   * Casos límite: Si el carrito está vacío, no realiza redirección.
+   */
+  realizarPedido(): void {
+    if (this.carrito().length === 0) return;
+    this.cerrarModalCarrito();
+    this.router.navigate(['/procesar-compra']);
+  }
+
+  /**
+   * Intención: Retornar una URL de imagen relacionada o de respaldo basada en el nombre o categoría.
+   * Parámetros:
+   *   - producto (Producto): El producto a evaluar.
+   * Retorno: string - URL final de la imagen.
+   * Casos límite: Si el producto es nulo, retorna imagen genérica.
+   */
+  obtenerImagenProducto(producto: any): string {
+    if (!producto) {
+      return 'https://images.unsplash.com/photo-1513104890138-7c749659a591';
+    }
+    if (producto.imagenUrl && producto.imagenUrl.trim() !== '' && !producto.imagenUrl.includes('broken') && producto.imagenUrl.startsWith('http')) {
+      return producto.imagenUrl;
+    }
+    const nombre = (producto.nombre || '').toLowerCase();
+    const categoria = (producto.categoria || '').toLowerCase();
+
+    if (nombre.includes('pepperoni')) {
+      return 'https://images.unsplash.com/photo-1628840042765-356cda07504e';
+    } else if (nombre.includes('hawaiana')) {
+      return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38';
+    } else if (nombre.includes('mexicana')) {
+      return 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002';
+    } else if (nombre.includes('queso') || nombre.includes('cuatro')) {
+      return 'https://images.unsplash.com/photo-1548365328-9f547fb0953b';
+    } else if (nombre.includes('tiramis') || nombre.includes('postre') || categoria === 'postre') {
+      return 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9';
+    } else if (categoria === 'bebida' || nombre.includes('refresco') || nombre.includes('coca') || nombre.includes('agua')) {
+      return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97';
+    }
+    
+    return 'https://images.unsplash.com/photo-1513104890138-7c749659a591';
+  }
+
+  /**
+   * Intención: Delegar al servicio la actualización del tamaño de un producto en el carrito.
+   * Parámetros:
+   *   - productoId (number): El identificador único del producto.
+   *   - evento (any): El evento change del select en el DOM.
+   * Retorno: void.
+   * Casos límite: Si el evento o target son nulos, no realiza ninguna acción.
+   */
+  actualizarTamano(productoId: number, evento: any): void {
+    if (!evento || !evento.target) return;
+    const valor = evento.target.value as 'grande' | 'familiar' | 'jumbo';
+    this.carritoService.actualizarTamano(productoId, valor);
+  }
 }
