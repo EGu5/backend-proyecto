@@ -4,7 +4,7 @@ import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { ItemCarrito } from '../models/carrito.model';
 import { AutenticacionService } from './autenticacion.service';
-import { CORTES_CAJA_MOCK, FACTURAS_MOCK } from '../models/datos-simulados';
+//import { CORTES_CAJA_MOCK, FACTURAS_MOCK } from '../models/datos-simulados';
 import { entorno } from '../../../environments/environment';
 
 /**
@@ -97,12 +97,12 @@ export class PedidoService {
    * Intención: Inyectar dependencias y cargar datos mock complementarios.
    */
   constructor(
-    private http: HttpClient,
-    private autenticacionService: AutenticacionService
-  ) {
-    this.cortesCaja.set(CORTES_CAJA_MOCK);
-    this.listaFacturas.set(FACTURAS_MOCK);
-  }
+  private http: HttpClient,
+  private autenticacionService: AutenticacionService
+) {
+  this.cortesCaja.set([]);
+  this.listaFacturas.set([]);
+}
 
   /**
    * Calcula de forma reactiva el monto total acumulado del pedido activo.
