@@ -8,5 +8,5 @@
  */
 export const entorno = {
   produccion: true,
-  urlBaseApi: 'https://backend-proyecto-4i0l.onrender.com'
+  urlBaseApi: 'https://backend-proyecto-4i0l.onrender.com/api'
 };
