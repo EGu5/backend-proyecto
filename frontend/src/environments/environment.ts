@@ -6,9 +6,7 @@
  *   - produccion: {boolean} Indica si el entorno corresponde a una compilación de producción.
  *   - urlBaseApi: {string} La URL base del servidor backend para consumo de servicios.
  */
-declare const process: any;
-
 export const entorno = {
-  produccion: false,
-  urlBaseApi: process.env['URL_BASE_API']
+  produccion: true,
+  urlBaseApi: 'https://backend-proyecto-4i0l.onrender.com'
 };
