@@ -9,13 +9,16 @@ const registrador = require('./utilidades/registrador.utilidad');
 const registrarSolicitud = require('./middlewares/solicitudes.middleware');
 const manejadorErroresGlobal = require('./middlewares/error.middleware');
 const CorreoServicio = require('./servicios/correo.servicio');
+const swaggerUi = require('swagger-ui-express');
+const especificacionSwagger = require('./configuracion/swagger');
 
 const app = express();
 const PUERTO = process.env.PUERTO || 3000;
 
-// Aplicar middlewares de seguridad y análisis del cuerpo de la petición
-app.use(helmet());
-// Configuración de CORS dinámica y segura para producción (Render) y desarrollo
+app.use(helmet({
+  contentSecurityPolicy: false
+}));
+
 const origenPermitido = process.env.FRONTEND_URL || '*';
 app.use(cors({
   origin: origenPermitido === '*' ? '*' : origenPermitido.split(','),
@@ -24,21 +27,11 @@ app.use(cors({
 app.use(express.json());
 app.use(registrarSolicitud);
 
-// Rutas de la API global
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(especificacionSwagger));
+
 const rutasDeLaApi = require('./rutas/indice.rutas');
 app.use('/api', rutasDeLaApi);
 
-/**
- * Endpoint de estado para comprobar la salud del servidor y la base de datos.
- * 
- * Intención: Monitorear que el servidor esté activo y la base de datos responda adecuadamente.
- * Parámetros:
- *   - peticion: {Object} Objeto de solicitud HTTP (Request).
- *   - respuesta: {Object} Objeto de respuesta HTTP (Response).
- * Retorno: Envía una respuesta JSON con el estado de los servicios.
- * Casos límite (edge cases):
- *   - Si la base de datos no está disponible, el servidor Express no se cae pero reporta el estado de la base de datos como DESCONECTADO.
- */
 app.get('/api/estado', async (peticion, respuesta) => {
   const baseDatosActiva = await probarConexion();
   
@@ -53,14 +46,11 @@ app.get('/api/estado', async (peticion, respuesta) => {
   });
 });
 
-// Registrar el middleware de errores global (Debe ser el último middleware)
 app.use(manejadorErroresGlobal);
 
-// Iniciar el servidor
 app.listen(PUERTO, async () => {
   registrador.info(`Servidor backend corriendo exitosamente en el puerto ${PUERTO}`);
   
-  // Validar conexión inicial a la base de datos y crear tablas automáticamente si no existen
   const baseDatosConectada = await probarConexion();
   if (baseDatosConectada) {
     registrador.info('Conexión inicial a la base de datos MySQL establecida correctamente.');
@@ -70,14 +60,13 @@ app.listen(PUERTO, async () => {
       registrador.error('No se pudieron inicializar las tablas de la base de datos en el arranque.', { error: error.message });
     }
   } else {
-    registrador.error('No se pudo establecer la conexión inicial a la base de datos MySQL. Verifique las credenciales y el estado del servicio.');
+    registrador.error('No se pudo establecer la conexión inicial a la base de datos MySQL.');
   }
 
-  // Validar conexión inicial del correo emisor de forma estricta
   try {
     await CorreoServicio.verificarConexion();
   } catch (error) {
-    registrador.error('[pizza pizza backend] El servicio de correo SMTP no está disponible o las credenciales son incorrectas.', { error: error.message });
+    registrador.error('[pizza pizza backend] El servicio de correo SMTP no está disponible.', { error: error.message });
   }
 });
 
